@@ -1,0 +1,59 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  moments   Moment[]
+  hostedRooms ResonanceRoom[]
+  participating RoomParticipant[]
+}
+
+model Moment {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  dataSnapshot Json     // stores WorldParameters JSON object
+  tags         String[]
+  createdAt    DateTime @default(now())
+
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ResonanceRoom {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  hostId       String
+  host         User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  participants RoomParticipant[]
+}
+
+model RoomParticipant {
+  id           String   @id @default(uuid())
+  roomId       String
+  userId       String
+  location     String
+  harmonicNote String
+  joinedAt     DateTime @default(now())
+
+  room         ResonanceRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
