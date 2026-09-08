@@ -40,12 +40,33 @@ export interface LocalFrequencyData {
   instrumentVoice: 'celesta-drops' | 'twilight-flute' | 'crystalline-pad' | 'nocturnal-glass' | 'solar-strings';
 }
 
+export type FrequencyPreset =
+  | "hz_174"  // often used for a grounding, tension-easing tone
+  | "hz_285"  // used for a sense of renewal/restoration
+  | "hz_396"  // used for easing tension and worry
+  | "hz_417"  // used for a sense of releasing/resetting
+  | "hz_528"  // widely used "calm/positivity" tuning
+  | "hz_639"  // used for connection-focused sessions
+  | "hz_741"  // used for mental clarity/focus
+  | "hz_852"  // used for a sense of spaciousness/awareness
+  | "hz_963"  // used for deep stillness/meditation
+  | "none";
+
+export interface FrequencyLayerState {
+  preset: FrequencyPreset;
+  hz: number;           // exact frequency value driving the oscillator
+  gain: number;          // 0-1, independent of main composition volume
+  hapticSync: boolean;
+  stressRegulation?: boolean; // layers hz_396 under hz_528 with 6s LFO breathing cycle
+}
+
 export interface MomentSnapshot {
   id: string;
   title: string;
   description: string;
   createdAt: string;
   dataSnapshot: WorldParameters;
+  frequencyLayer?: FrequencyLayerState;
   localContext?: {
     locationName: string;
     condition: string;

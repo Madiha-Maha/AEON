@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { AppMode } from '../types';
-import { Volume2, VolumeX, Play, Pause, Radio, Wind, Bookmark, Users, Sparkles, Sliders } from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause, Radio, Wind, Bookmark, Users, Sparkles, Sliders, Waves } from 'lucide-react';
 
 interface HeaderNavProps {
   currentMode: AppMode;
@@ -20,6 +20,9 @@ interface HeaderNavProps {
   masterVolume: number;
   onChangeVolume: (vol: number) => void;
   onOpenTuner: () => void;
+  onOpenFrequencyModal: () => void;
+  isFrequencyActive: boolean;
+  frequencyLabel: string;
   isIdle: boolean;
 }
 
@@ -33,6 +36,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   masterVolume,
   onChangeVolume,
   onOpenTuner,
+  onOpenFrequencyModal,
+  isFrequencyActive,
+  frequencyLabel,
   isIdle,
 }) => {
   const modes: { id: AppMode; label: string; icon: React.ReactNode }[] = [
@@ -96,7 +102,24 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         </nav>
 
         {/* Audio Engine Controls & Earth Tuner */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Frequency & Haptic Bed Trigger (Section 3B) */}
+          <button
+            id="frequency-layer-btn"
+            onClick={onOpenFrequencyModal}
+            title="Frequency & Haptic Bed (Pure-tone tuning & Stress-Regulation)"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs transition-all border ${
+              isFrequencyActive
+                ? 'bg-[#3ADBC4]/15 text-[#3ADBC4] border-[#3ADBC4]/40 shadow-sm shadow-[#3ADBC4]/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border-white/10'
+            }`}
+          >
+            <Waves className="w-3.5 h-3.5" />
+            <span className="font-mono text-[10px] hidden sm:inline">
+              {frequencyLabel}
+            </span>
+          </button>
+
           {/* Planetary Tuner Trigger */}
           <button
             id="tuner-toggle-btn"

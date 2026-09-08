@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WorldParameters, AppMode, LocalFrequencyData, MomentSnapshot, ResonanceRoom } from './types';
+import { WorldParameters, AppMode, LocalFrequencyData, MomentSnapshot, ResonanceRoom, FrequencyLayerState } from './types';
 import { globalAudioEngine } from './services/audioEngine';
 import { globalDataStream } from './services/dataStreamService';
 import { INITIAL_MOMENTS, INITIAL_ROOMS } from './data/initialData';
@@ -17,6 +17,7 @@ import { MomentsView } from './components/MomentsView';
 import { ResonanceRoomsView } from './components/ResonanceRoomsView';
 import { BreathModeView } from './components/BreathModeView';
 import { PlanetaryTunerModal } from './components/PlanetaryTunerModal';
+import { FrequencyLayerModal } from './components/FrequencyLayerModal';
 
 export default function App() {
   // Navigation & Active View Mode
@@ -30,6 +31,16 @@ export default function App() {
   // Planetary Parameters Stream
   const [parameters, setParameters] = useState<WorldParameters>(() => globalDataStream.getCurrent());
   const [isTunerOpen, setIsTunerOpen] = useState<boolean>(false);
+
+  // Frequency & Haptic Bed Layer (Section 3B)
+  const [isFrequencyModalOpen, setIsFrequencyModalOpen] = useState<boolean>(false);
+  const [frequencyLayerState, setFrequencyLayerState] = useState<FrequencyLayerState>(() => ({
+    preset: 'none',
+    hz: 0,
+    gain: 0.15,
+    hapticSync: true,
+    stressRegulation: false,
+  }));
 
   // My Frequency State
   const [myFrequencyEnabled, setMyFrequencyEnabled] = useState<boolean>(true);
@@ -161,6 +172,13 @@ export default function App() {
     }
   };
 
+  // Frequency Layer State Change
+  const handleFrequencyStateChange = (newState: Partial<FrequencyLayerState>) => {
+    const updated = { ...frequencyLayerState, ...newState };
+    setFrequencyLayerState(updated);
+    globalAudioEngine.setFrequencyLayer(updated);
+  };
+
   // Reset to live feed
   const handleResetToLive = () => {
     setActivePlayingMomentId(null);
@@ -172,7 +190,7 @@ export default function App() {
     }
   };
 
-  // Save Moment
+  // Save Moment (Section 3B: preserves exact frequency layer & haptic pulse)
   const handleSaveMoment = (title: string, description: string, tags: string[]) => {
     const newMoment: MomentSnapshot = {
       id: `moment-${Date.now()}`,
@@ -180,6 +198,7 @@ export default function App() {
       description,
       createdAt: new Date().toISOString(),
       dataSnapshot: { ...parameters },
+      frequencyLayer: { ...frequencyLayerState },
       localContext: {
         locationName: `${localFrequency.city}, ${localFrequency.country}`,
         condition: localFrequency.condition,
@@ -189,6 +208,7 @@ export default function App() {
 
     const updated = [newMoment, ...moments];
     setMoments(updated);
+    globalAudioEngine.triggerHaptic('moment-saved');
     try {
       localStorage.setItem('aeon_saved_moments', JSON.stringify(updated));
     } catch {
@@ -196,7 +216,7 @@ export default function App() {
     }
   };
 
-  // Play Snapshot Moment
+  // Play Snapshot Moment (reproduces exact world-data + sound-and-frequency state)
   const handlePlayMoment = async (moment: MomentSnapshot) => {
     if (activePlayingMomentId === moment.id) {
       // Unload snapshot, return to live
@@ -214,6 +234,12 @@ export default function App() {
     }
 
     globalAudioEngine.updateParameters(moment.dataSnapshot, 2.5);
+
+    // Reproduce stored frequency tuning state
+    if (moment.frequencyLayer) {
+      setFrequencyLayerState(moment.frequencyLayer);
+      globalAudioEngine.setFrequencyLayer(moment.frequencyLayer);
+    }
   };
 
   // Delete Moment
@@ -308,6 +334,7 @@ export default function App() {
 
   // Join Resonance Room
   const handleJoinRoom = (roomId: string) => {
+    globalAudioEngine.triggerHaptic('room-joined');
     setCurrentRoomId(roomId);
     setRooms((prevRooms) =>
       prevRooms.map((r) => {
@@ -373,6 +400,15 @@ export default function App() {
         masterVolume={masterVolume}
         onChangeVolume={handleChangeVolume}
         onOpenTuner={() => setIsTunerOpen(true)}
+        onOpenFrequencyModal={() => setIsFrequencyModalOpen(true)}
+        isFrequencyActive={frequencyLayerState.stressRegulation || frequencyLayerState.preset !== 'none'}
+        frequencyLabel={
+          frequencyLayerState.stressRegulation
+            ? 'Stress-Reg'
+            : frequencyLayerState.preset !== 'none'
+            ? `${frequencyLayerState.hz}Hz`
+            : 'Tonal Bed'
+        }
         isIdle={isIdle && isPlaying}
       />
 
@@ -405,6 +441,7 @@ export default function App() {
           <MomentsView
             moments={moments}
             currentParameters={parameters}
+            frequencyState={frequencyLayerState}
             onSaveMoment={handleSaveMoment}
             onPlayMoment={handlePlayMoment}
             onDeleteMoment={handleDeleteMoment}
@@ -439,6 +476,15 @@ export default function App() {
         parameters={parameters}
         onUpdateParameters={handleUpdateParameters}
         onResetToLive={handleResetToLive}
+      />
+
+      {/* 5. Frequency & Haptic Bed Modal (Section 3B) */}
+      <FrequencyLayerModal
+        isOpen={isFrequencyModalOpen}
+        onClose={() => setIsFrequencyModalOpen(false)}
+        frequencyState={frequencyLayerState}
+        onChangeFrequencyState={handleFrequencyStateChange}
+        onTriggerHapticTest={() => globalAudioEngine.triggerHaptic('frequency-engaged')}
       />
     </main>
   );

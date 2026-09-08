@@ -7,12 +7,13 @@
  */
 
 import React, { useState } from 'react';
-import { MomentSnapshot, WorldParameters } from '../types';
-import { Bookmark, Play, Share2, Download, Trash2, Plus, Sparkles, Check, Clock, Radio } from 'lucide-react';
+import { MomentSnapshot, WorldParameters, FrequencyLayerState } from '../types';
+import { Bookmark, Play, Share2, Download, Trash2, Plus, Sparkles, Check, Clock, Radio, Waves } from 'lucide-react';
 
 interface MomentsViewProps {
   moments: MomentSnapshot[];
   currentParameters: WorldParameters;
+  frequencyState?: FrequencyLayerState;
   onSaveMoment: (title: string, description: string, tags: string[]) => void;
   onPlayMoment: (snapshot: MomentSnapshot) => void;
   onDeleteMoment: (id: string) => void;
@@ -22,6 +23,7 @@ interface MomentsViewProps {
 export const MomentsView: React.FC<MomentsViewProps> = ({
   moments,
   currentParameters,
+  frequencyState,
   onSaveMoment,
   onPlayMoment,
   onDeleteMoment,
@@ -112,12 +114,15 @@ export const MomentsView: React.FC<MomentsViewProps> = ({
             </div>
 
             {/* Current Snapshot Preview */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4 p-3 rounded-xl bg-black/40 text-center font-mono text-[11px] text-slate-300">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-4 p-3 rounded-xl bg-black/40 text-center font-mono text-[11px] text-slate-300">
               <div>Weather: {Math.round(currentParameters.weatherVolatility * 100)}%</div>
               <div>Markets: {Math.round(currentParameters.marketVolatility * 100)}%</div>
               <div>Sentiment: {currentParameters.newsSentiment.toFixed(2)}</div>
               <div>Seismic: {Math.round(currentParameters.seismicActivity * 100)}%</div>
               <div>Terminator: {Math.round(currentParameters.terminatorPhase * 100)}%</div>
+              <div className="text-[#3ADBC4]">
+                Tuning: {frequencyState?.stressRegulation ? '396/528Hz Stress-Reg' : frequencyState && frequencyState.preset !== 'none' ? `${frequencyState.hz}Hz` : 'Natural'}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -198,9 +203,21 @@ export const MomentsView: React.FC<MomentsViewProps> = ({
                       <h4 className="font-serif-cormorant text-xl font-medium text-slate-100 leading-snug">
                         {m.title}
                       </h4>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5">
-                        <Clock className="w-3 h-3" />
-                        <span>{new Date(m.createdAt).toLocaleDateString()} · {new Date(m.createdAt).toLocaleTimeString()}</span>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(m.createdAt).toLocaleDateString()} · {new Date(m.createdAt).toLocaleTimeString()}</span>
+                        </span>
+                        {m.frequencyLayer && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.2 rounded-full bg-[#3ADBC4]/15 text-[#3ADBC4] border border-[#3ADBC4]/30">
+                            <Waves className="w-2.5 h-2.5" />
+                            {m.frequencyLayer.stressRegulation
+                              ? '396/528Hz Stress-Reg'
+                              : m.frequencyLayer.preset !== 'none'
+                              ? `${m.frequencyLayer.hz}Hz Bed`
+                              : 'Natural'}
+                          </span>
+                        )}
                       </div>
                     </div>
 

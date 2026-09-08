@@ -7,7 +7,7 @@
  * Every harmonic, sub-bass tremor, chime, and atmospheric swell is synthesized in real time.
  */
 
-import { WorldParameters, LocalFrequencyData } from '../types';
+import { WorldParameters, LocalFrequencyData, FrequencyLayerState, FrequencyPreset } from '../types';
 import { mapWorldToMusicalParameters, MusicalParameters, interpolateParameters } from '../lib/mapping';
 
 export class EarthAudioEngine {
@@ -49,6 +49,23 @@ export class EarthAudioEngine {
   private myFreqFilter: BiquadFilterNode | null = null;
   private myFreqEnabled: boolean = false;
   private currentLocalData: LocalFrequencyData | null = null;
+
+  // 6. Pure Frequency Bed & Stress Regulation Dual Layer (Section 3B)
+  private pureToneOsc: OscillatorNode | null = null;
+  private pureToneGain: GainNode | null = null;
+  private stressOsc1: OscillatorNode | null = null; // 396 Hz (tension release)
+  private stressOsc2: OscillatorNode | null = null; // 528 Hz (calm/positivity)
+  private stressGain: GainNode | null = null;
+  private stressLfo: OscillatorNode | null = null; // 0.166 Hz (~6s breathing LFO)
+  private stressLfoGain: GainNode | null = null;
+  private frequencyLayerState: FrequencyLayerState = {
+    preset: 'none',
+    hz: 0,
+    gain: 0.12,
+    hapticSync: true,
+    stressRegulation: false,
+  };
+  private stressHapticInterval: number | null = null;
 
   // Generative chime sequencing timer
   private chimeTimer: number | null = null;
@@ -251,6 +268,53 @@ export class EarthAudioEngine {
     this.myFreqOsc1.start();
     this.myFreqOsc2.start();
 
+    // 6. PURE FREQUENCY OSCILLATOR BED (Section 3B: dedicated oscillator at exact target Hz)
+    this.pureToneGain = ctx.createGain();
+    this.pureToneGain.gain.setValueAtTime(0.0001, now);
+
+    this.pureToneOsc = ctx.createOscillator();
+    this.pureToneOsc.type = 'sine';
+    this.pureToneOsc.frequency.setValueAtTime(this.frequencyLayerState.hz || 528, now);
+    this.pureToneOsc.connect(this.pureToneGain);
+    this.pureToneGain.connect(this.masterGain);
+    this.pureToneOsc.start();
+
+    // 7. STRESS-REGULATION DUAL TONE OSCILLATORS (hz_396 under hz_528 with 6s LFO breathing pace)
+    this.stressGain = ctx.createGain();
+    this.stressGain.gain.setValueAtTime(0.0001, now);
+
+    this.stressOsc1 = ctx.createOscillator();
+    this.stressOsc1.type = 'sine';
+    this.stressOsc1.frequency.setValueAtTime(396, now); // 396 Hz - tension release
+
+    this.stressOsc2 = ctx.createOscillator();
+    this.stressOsc2.type = 'sine';
+    this.stressOsc2.frequency.setValueAtTime(528, now); // 528 Hz - calm/positivity
+
+    // 6.0s cycle (~0.1667 Hz) LFO for gentle breath modulation
+    this.stressLfo = ctx.createOscillator();
+    this.stressLfo.type = 'sine';
+    this.stressLfo.frequency.setValueAtTime(1 / 6.0, now);
+
+    this.stressLfoGain = ctx.createGain();
+    this.stressLfoGain.gain.setValueAtTime(0.04, now);
+
+    this.stressLfo.connect(this.stressLfoGain);
+    this.stressLfoGain.connect(this.stressGain.gain);
+
+    this.stressOsc1.connect(this.stressGain);
+    this.stressOsc2.connect(this.stressGain);
+    this.stressGain.connect(this.masterGain);
+
+    this.stressOsc1.start();
+    this.stressOsc2.start();
+    this.stressLfo.start();
+
+    // Apply any initial frequency layer state
+    if (this.frequencyLayerState.preset !== 'none' || this.frequencyLayerState.stressRegulation) {
+      this.setFrequencyLayer(this.frequencyLayerState);
+    }
+
     // Connect Breath Envelope to Master -> Analyser -> Destination
     this.breathEnvelopeGain.connect(this.masterGain);
     this.masterGain.connect(this.analyser);
@@ -432,6 +496,119 @@ export class EarthAudioEngine {
   }
 
   /**
+   * Section 3B: Updates Frequency & Haptic Layer state
+   * Crossfades smoothly with 3-5s ramp and activates time-synced haptics
+   */
+  public setFrequencyLayer(newState: Partial<FrequencyLayerState>): void {
+    const prevPreset = this.frequencyLayerState.preset;
+    const prevStress = this.frequencyLayerState.stressRegulation;
+
+    this.frequencyLayerState = { ...this.frequencyLayerState, ...newState };
+    const current = this.frequencyLayerState;
+
+    if (!this.ctx || !this.isRunning) return;
+    const now = this.ctx.currentTime;
+    const rampTime = 4.0; // Smooth 3-5s crossfade ramp
+
+    // 1. Stress-Regulation Mode
+    if (current.stressRegulation) {
+      // Fade out single pure tone
+      if (this.pureToneGain) {
+        this.pureToneGain.gain.setTargetAtTime(0.0001, now, rampTime);
+      }
+      // Fade in dual-oscillator bed (hz_396 + hz_528 with 6s breathing LFO)
+      if (this.stressGain) {
+        const targetVol = Math.max(0, Math.min(0.25, current.gain * 0.18));
+        this.stressGain.gain.setTargetAtTime(targetVol, now, rampTime);
+      }
+
+      // Synced haptic cycle [600, 200, 600]
+      if (current.hapticSync && (!prevStress || !this.stressHapticInterval)) {
+        this.startStressHapticLoop();
+      }
+    } else {
+      // Stress mode inactive: ramp down stress gain
+      if (this.stressGain) {
+        this.stressGain.gain.setTargetAtTime(0.0001, now, rampTime);
+      }
+      this.stopStressHapticLoop();
+
+      // Check single pure-tone preset
+      if (current.preset !== 'none' && current.hz > 0) {
+        if (this.pureToneOsc) {
+          this.pureToneOsc.frequency.setTargetAtTime(current.hz, now, 1.2);
+        }
+        if (this.pureToneGain) {
+          const targetVol = Math.max(0, Math.min(0.25, current.gain * 0.18));
+          this.pureToneGain.gain.setTargetAtTime(targetVol, now, rampTime);
+        }
+
+        // Trigger single short haptic pulse [80] on preset engagement
+        if (current.hapticSync && prevPreset !== current.preset) {
+          this.triggerHaptic('frequency-engaged');
+        }
+      } else {
+        // Off: ramp down pure tone
+        if (this.pureToneGain) {
+          this.pureToneGain.gain.setTargetAtTime(0.0001, now, rampTime);
+        }
+      }
+    }
+  }
+
+  public getFrequencyLayerState(): FrequencyLayerState {
+    return { ...this.frequencyLayerState };
+  }
+
+  /**
+   * Time-synced haptic vibration pattern table (Section 3B)
+   */
+  public triggerHaptic(trigger: 'frequency-engaged' | 'stress-cycle' | 'moment-saved' | 'room-joined'): void {
+    if (typeof navigator === 'undefined' || !navigator.vibrate) return;
+    if (!this.frequencyLayerState.hapticSync && trigger !== 'moment-saved' && trigger !== 'room-joined') return;
+
+    try {
+      switch (trigger) {
+        case 'frequency-engaged':
+          // [80] single short pulse on preset selection
+          navigator.vibrate([80]);
+          break;
+        case 'stress-cycle':
+          // [600, 200, 600] slow pulse-pause-pulse synced to 6s breath LFO
+          navigator.vibrate([600, 200, 600]);
+          break;
+        case 'moment-saved':
+          // [40, 40, 40] triple quick tap on successful save
+          navigator.vibrate([40, 40, 40]);
+          break;
+        case 'room-joined':
+          // [200] single medium pulse on joining room
+          navigator.vibrate([200]);
+          break;
+      }
+    } catch {
+      // Ignore if haptics blocked by environment
+    }
+  }
+
+  private startStressHapticLoop(): void {
+    this.stopStressHapticLoop();
+    this.triggerHaptic('stress-cycle');
+    this.stressHapticInterval = window.setInterval(() => {
+      if (this.frequencyLayerState.stressRegulation && this.frequencyLayerState.hapticSync && this.isRunning) {
+        this.triggerHaptic('stress-cycle');
+      }
+    }, 6000); // exactly 6.0s period matching the 6s breath LFO
+  }
+
+  private stopStressHapticLoop(): void {
+    if (this.stressHapticInterval) {
+      window.clearInterval(this.stressHapticInterval);
+      this.stressHapticInterval = null;
+    }
+  }
+
+  /**
    * Controls breath mode envelope swell
    */
   public setBreathPhase(phase: 'inhale' | 'hold' | 'exhale' | 'pause', progress: number): void {
@@ -485,6 +662,7 @@ export class EarthAudioEngine {
       clearTimeout(this.chimeTimer);
       this.chimeTimer = null;
     }
+    this.stopStressHapticLoop();
     if (this.ctx && this.ctx.state === 'running') {
       this.ctx.suspend();
     }
