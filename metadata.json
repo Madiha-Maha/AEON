@@ -1,6 +1,6 @@
 {
   "name": "Aeon — The Living Symphony of Earth",
-  "description": "A generative ambient music experience driven by real-time planetary data and rendered through an audio-reactive aurora visualizer.",
+  "description": "A generative ambient music experience driven by real-time planetary data, sacred healing frequencies, and rendered through an audio-reactive aurora visualizer.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

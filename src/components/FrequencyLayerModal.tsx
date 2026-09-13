@@ -9,6 +9,7 @@
 import React from 'react';
 import { FrequencyLayerState, FrequencyPreset } from '../types';
 import { FREQUENCY_PRESETS } from '../lib/frequency-presets';
+import { globalAudioEngine } from '../services/audioEngine';
 import { X, Sparkles, HeartPulse, Smartphone, Volume2, ShieldCheck } from 'lucide-react';
 
 interface FrequencyLayerModalProps {
@@ -124,41 +125,68 @@ export const FrequencyLayerModal: React.FC<FrequencyLayerModalProps> = ({
             <span className="text-xs font-mono uppercase tracking-wider text-slate-300">
               Pure-Tone Tuning Presets
             </span>
-            <span className="text-[11px] text-slate-500 font-mono">
-              Dedicated Oscillator · Exact Hz
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onChangeFrequencyState({ soloMode: !frequencyState.soloMode })}
+                className={`text-[11px] px-2.5 py-1 rounded-full font-mono transition-colors ${
+                  frequencyState.soloMode ? 'bg-[#3ADBC4] text-[#0A0E27] font-bold' : 'bg-white/5 text-slate-400 hover:text-white'
+                }`}
+              >
+                {frequencyState.soloMode ? 'Solo Focus Mode (Active)' : 'Enable Solo Mode'}
+              </button>
+              <span className="text-[11px] text-slate-500 font-mono">
+                Dedicated Oscillator · Exact Hz
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
             {presets.map((key) => {
               const preset = FREQUENCY_PRESETS[key];
               const isSelected = !frequencyState.stressRegulation && frequencyState.preset === key;
 
               return (
-                <button
+                <div
                   key={key}
                   id={`preset-${key}`}
-                  onClick={() => handleSelectPreset(key)}
-                  className={`flex flex-col text-left p-3 rounded-xl transition-all border ${
+                  className={`group relative flex flex-col justify-between text-left p-3 rounded-xl transition-all border ${
                     isSelected
-                      ? 'bg-[#E8C170]/15 border-[#E8C170] shadow-sm shadow-[#E8C170]/20'
+                      ? 'bg-[#3ADBC4]/15 border-[#3ADBC4] shadow-sm shadow-[#3ADBC4]/20'
                       : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-300'
                   }`}
                 >
-                  <div className="flex items-baseline justify-between mb-1">
-                    <span className={`text-xs font-semibold font-mono ${isSelected ? 'text-[#E8C170]' : 'text-slate-200'}`}>
-                      {preset.label}
-                    </span>
-                    {key !== 'none' && (
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {preset.hz}Hz
+                  <div
+                    onClick={() => handleSelectPreset(key)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className={`text-xs font-semibold font-mono ${isSelected ? 'text-[#3ADBC4]' : 'text-slate-200'}`}>
+                        {preset.label}
                       </span>
-                    )}
+                      {key !== 'none' && key !== 'custom' && (
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {preset.hz}Hz
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] font-medium text-slate-200 truncate">{preset.name}</div>
+                    <span className="text-[10px] text-slate-400 font-light line-clamp-2 leading-snug mt-1">
+                      {preset.description}
+                    </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-light line-clamp-2 leading-snug">
-                    {preset.description}
-                  </span>
-                </button>
+
+                  {preset.hz > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        globalAudioEngine.strikeSingingBowl(preset.hz, 'quartz');
+                      }}
+                      className="mt-2 text-[10px] font-mono py-1 rounded bg-white/5 hover:bg-[#E8C170] hover:text-[#0A0E27] text-slate-400 transition-colors text-center border border-white/5"
+                    >
+                      Strike Bowl
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

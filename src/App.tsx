@@ -16,6 +16,7 @@ import { MyFrequencyView } from './components/MyFrequencyView';
 import { MomentsView } from './components/MomentsView';
 import { ResonanceRoomsView } from './components/ResonanceRoomsView';
 import { BreathModeView } from './components/BreathModeView';
+import { HealingSanctuaryView } from './components/HealingSanctuaryView';
 import { PlanetaryTunerModal } from './components/PlanetaryTunerModal';
 import { FrequencyLayerModal } from './components/FrequencyLayerModal';
 
@@ -134,6 +135,21 @@ export default function App() {
   useEffect(() => {
     globalAudioEngine.setLocalFrequency(localFrequency, myFrequencyEnabled, myFrequencyVolume);
   }, [localFrequency, myFrequencyEnabled, myFrequencyVolume]);
+
+  // Audio Context unlock listener on user interaction
+  useEffect(() => {
+    const handleUnlockAudio = () => {
+      if (globalAudioEngine.isContextSuspended()) {
+        globalAudioEngine.resume();
+      }
+    };
+    window.addEventListener('click', handleUnlockAudio);
+    window.addEventListener('touchstart', handleUnlockAudio);
+    return () => {
+      window.removeEventListener('click', handleUnlockAudio);
+      window.removeEventListener('touchstart', handleUnlockAudio);
+    };
+  }, []);
 
   // Toggle Play / Tune In
   const handleTogglePlay = async () => {
@@ -410,6 +426,7 @@ export default function App() {
             : 'Tonal Bed'
         }
         isIdle={isIdle && isPlaying}
+        onTestSound={() => globalAudioEngine.triggerSoundCheck()}
       />
 
       {/* 3. Feature Views */}
@@ -421,6 +438,20 @@ export default function App() {
             onTogglePlay={handleTogglePlay}
             onCaptureMoment={() => setCurrentMode('moments')}
             onOpenTuner={() => setIsTunerOpen(true)}
+          />
+        )}
+
+        {currentMode === 'healing' && (
+          <HealingSanctuaryView
+            frequencyState={frequencyLayerState}
+            onChangeFrequencyState={handleFrequencyStateChange}
+            isPlaying={isPlaying}
+            onEnsurePlaying={async () => {
+              if (!isPlaying) {
+                await globalAudioEngine.start();
+                setIsPlaying(true);
+              }
+            }}
           />
         )}
 

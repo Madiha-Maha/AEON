@@ -58,18 +58,20 @@ export function mapWorldToMusicalParameters(params: WorldParameters): MusicalPar
 
   // 1. Weather Volatility: drives filter cutoff, reverb decay, and atmospheric air
   // High weather turbulence expands the acoustic space and opens high-frequency textures
-  const filterCutoffHz = 280 + Math.pow(weatherVolatility, 1.3) * 5800; // 280Hz - 6080Hz
-  const filterQ = 1.0 + weatherVolatility * 3.5;
-  const reverbDecaySeconds = 4.0 + weatherVolatility * 12.0; // 4s to 16s majestic hall
-  const reverbWet = 0.35 + weatherVolatility * 0.45; // 0.35 to 0.80
-  const atmosphericNoiseGain = 0.02 + weatherVolatility * 0.16;
+  // Minimum filter cutoff is kept well above 850Hz to ensure clear acoustic presence on all speakers
+  const filterCutoffHz = 850 + Math.pow(weatherVolatility, 1.2) * 5500; // 850Hz - 6350Hz
+  const filterQ = 0.8 + weatherVolatility * 2.5;
+  const reverbDecaySeconds = 3.5 + weatherVolatility * 10.0; // 3.5s to 13.5s majestic hall
+  const reverbWet = 0.30 + weatherVolatility * 0.40; // 0.30 to 0.70
+  const atmosphericNoiseGain = 0.02 + weatherVolatility * 0.12;
 
   // 2. Market Volatility: drives tempo, rhythmic pacing, and harmonic dissonance
   // High market fluctuation quickens the pulse and introduces micro-tension
-  const tempoBpm = 48 + marketVolatility * 38; // 48 - 86 BPM (remains contemplative)
+  const tempoBpm = 50 + marketVolatility * 36; // 50 - 86 BPM (remains contemplative)
   // Rhythmic chime trigger interval (seconds between generative pulses)
-  const rhythmicDensityInterval = Math.max(1.5, 7.5 - marketVolatility * 5.0);
-  const dissonanceRatio = Math.min(0.35, marketVolatility * 0.35);
+  // Tuned to 2.2s - 4.5s so celestial chimes ring out with regular, audible life
+  const rhythmicDensityInterval = Math.max(1.8, 4.5 - marketVolatility * 2.2);
+  const dissonanceRatio = Math.min(0.25, marketVolatility * 0.25);
 
   // 3. News Sentiment: drives harmonic mode (major / minor blend)
   // Positive sentiment (+1) favors radiant Lydian/Major, negative (-1) favors deep Dorian/Minor
@@ -88,16 +90,16 @@ export function mapWorldToMusicalParameters(params: WorldParameters): MusicalPar
 
   // 4. Seismic Activity: drives sub-bass gain, sub-frequency and subterranean pulse
   // Normalized seismic energy activates deep tectonic frequencies
-  const subBassGain = 0.15 + Math.pow(seismicActivity, 1.2) * 0.80; // up to 0.95
-  const subBassFrequencyHz = 36.7 + (1 - seismicActivity) * 18.0; // 36.7Hz to 54.7Hz
-  const seismicRumbleTremoloHz = 0.3 + seismicActivity * 2.5;
+  const subBassGain = 0.25 + Math.pow(seismicActivity, 1.1) * 0.65;
+  const subBassFrequencyHz = 48.0 + (1 - seismicActivity) * 24.0; // 48Hz to 72Hz (warm and audible)
+  const seismicRumbleTremoloHz = 0.4 + seismicActivity * 2.0;
 
   // 5. Terminator Phase: drives celestial solar brightness, lead timbre & overtones
   // 0.0 = Deep Midnight, 0.5 = Golden Dawn / Dusk, 1.0 = Solar Zenith
-  const leadBrightnessGain = 0.20 + terminatorPhase * 0.65;
-  const leadHarmonicOvertoneIndex = 1.0 + terminatorPhase * 4.0;
-  // Fundamental drone frequency (D2 = 73.42Hz, or A1 = 55Hz)
-  const solarDroneFreqHz = 73.416 * (1 + (terminatorPhase - 0.5) * 0.04);
+  const leadBrightnessGain = 0.35 + terminatorPhase * 0.55;
+  const leadHarmonicOvertoneIndex = 1.0 + terminatorPhase * 3.5;
+  // Fundamental drone frequency (D3 = 146.83Hz for rich audible warmth, shifting slightly with solar angle)
+  const solarDroneFreqHz = 146.832 * (1 + (terminatorPhase - 0.5) * 0.03);
 
   return {
     tempoBpm,

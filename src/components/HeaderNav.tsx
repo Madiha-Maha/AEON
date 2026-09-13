@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { AppMode } from '../types';
-import { Volume2, VolumeX, Play, Pause, Radio, Wind, Bookmark, Users, Sparkles, Sliders, Waves } from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause, Radio, Wind, Bookmark, Users, Sparkles, Sliders, Waves, Bell } from 'lucide-react';
 
 interface HeaderNavProps {
   currentMode: AppMode;
@@ -24,6 +24,7 @@ interface HeaderNavProps {
   isFrequencyActive: boolean;
   frequencyLabel: string;
   isIdle: boolean;
+  onTestSound?: () => void;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -40,10 +41,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   isFrequencyActive,
   frequencyLabel,
   isIdle,
+  onTestSound,
 }) => {
   const modes: { id: AppMode; label: string; icon: React.ReactNode }[] = [
     { id: 'pulse', label: 'Global Pulse', icon: <Radio className="w-3.5 h-3.5" /> },
-    { id: 'my-frequency', label: 'My Frequency', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'healing', label: 'Healing Sanctuary', icon: <Sparkles className="w-3.5 h-3.5 text-[#3ADBC4]" /> },
+    { id: 'my-frequency', label: 'My Frequency', icon: <Waves className="w-3.5 h-3.5" /> },
     { id: 'moments', label: 'Moments', icon: <Bookmark className="w-3.5 h-3.5" /> },
     { id: 'rooms', label: 'Resonance Rooms', icon: <Users className="w-3.5 h-3.5" /> },
     { id: 'breath', label: 'Breath Mode', icon: <Wind className="w-3.5 h-3.5" /> },
@@ -149,7 +152,26 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               onChange={(e) => onChangeVolume(parseFloat(e.target.value))}
               className="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#3ADBC4]"
             />
+            {onTestSound && (
+              <button
+                id="sound-check-btn"
+                onClick={onTestSound}
+                title="Test Sound: Play Celestial Harmonic Chime"
+                className="text-slate-400 hover:text-[#E8C170] transition-colors p-0.5 ml-0.5"
+              >
+                <Bell className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
+
+          {/* Active Audio Waveform Indicator */}
+          {isPlaying && (
+            <div className="hidden md:flex items-center gap-0.5 px-1.5 py-1 bg-white/5 rounded-full border border-white/10" title="Living Symphony Synthesizing">
+              <span className="w-0.5 h-2.5 bg-[#3ADBC4] rounded-full animate-pulse" />
+              <span className="w-0.5 h-4 bg-[#5EFCE8] rounded-full animate-pulse [animation-delay:150ms]" />
+              <span className="w-0.5 h-2 bg-[#E8C170] rounded-full animate-pulse [animation-delay:300ms]" />
+            </div>
+          )}
 
           {/* Main Play/Tune In Button */}
           <button
